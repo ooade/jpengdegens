@@ -19,13 +19,34 @@ async function run() {
 	if (!(await hasAccounts()) && !(await requestAccounts())) {
 		throw new Error('Please let me take your money');
 	}
-	const contract = new ethers.Contract(
-		'0x5fbdb2315678afecb367f032d93f642f64180aa3',
-		['function hello() public pure returns (string memory)'],
-		new ethers.providers.Web3Provider(window.ethereum)
+	console.log(process.env.CONTRACT_ADDRESS);
+	const counter = new ethers.Contract(
+		process.env.CONTRACT_ADDRESS,
+		[
+			'function count() public',
+			'function getCounter() public view returns (uint32)',
+		],
+		new ethers.providers.Web3Provider(window.ethereum).getSigner()
 	);
 
-	document.body.innerHTML = await contract.hello();
+	const result = document.createElement('div');
+	async function setResult(count) {
+		result.innerText = count || (await counter.getCounter());
+	}
+	setResult();
+	// console.log(counter.filters.CounterInc);
+	counter.on({ topics: [ethers.utils.id('CounterInc()')] }, function (count) {
+		setResult(count);
+	});
+
+	const button = document.createElement('button');
+	button.innerText = 'Increment';
+	button.addEventListener('click', async () => {
+		await counter.count();
+	});
+
+	document.body.appendChild(result);
+	document.body.appendChild(button);
 }
 
 run();
